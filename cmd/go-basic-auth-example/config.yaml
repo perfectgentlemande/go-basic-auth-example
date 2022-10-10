@@ -1,6 +1,7 @@
-# tst_pwd_01
-tst_usr_01: 052M+QSrc8M6Mu/9ers/IXbwvjnQg/sWlqbLyBuBayk=
-# tst_pwd_02
-tst_usr_02: zO7NqQDAlZfBZWgwwtMVxHFQxnYPAJGOiJtx7MwNykQ=
+addr: ":80"
 salt: "RKt1Q@6Es@vdrh.iyg.4OMuuiKwf)ui_rJ9-4*SW.(yY47(TjVWrVuf1Blw(OFdq"
-port: 80
+mocked_users:
+  # tst_pwd_01
+  tst_usr_01: 052M+QSrc8M6Mu/9ers/IXbwvjnQg/sWlqbLyBuBayk=
+  # tst_pwd_02
+  tst_usr_02: zO7NqQDAlZfBZWgwwtMVxHFQxnYPAJGOiJtx7MwNykQ=

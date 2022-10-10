@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -78,17 +79,19 @@ type Controller struct {
 }
 
 func main() {
+	cfg, err := readConfig("config.yaml")
+	if err != nil {
+		log.Fatal("Cannot read config: ", err)
+	}
+
 	c := Controller{
-		storedUsernamesWithPasswords: map[string]string{
-			"tst_usr_01": "052M+QSrc8M6Mu/9ers/IXbwvjnQg/sWlqbLyBuBayk=",
-			"tst_usr_02": "zO7NqQDAlZfBZWgwwtMVxHFQxnYPAJGOiJtx7MwNykQ=",
-		},
-		salt: "RKt1Q@6Es@vdrh.iyg.4OMuuiKwf)ui_rJ9-4*SW.(yY47(TjVWrVuf1Blw(OFdq",
+		storedUsernamesWithPasswords: cfg.MockedUsers,
+		salt:                         cfg.Salt,
 	}
 
 	r := chi.NewRouter()
 	r.Post("/login", c.postLogin)
 	r.Post("/verify", c.postVerify)
 
-	http.ListenAndServe(":80", r)
+	http.ListenAndServe(cfg.Addr, r)
 }
