@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/perfectgentlemande/go-basic-auth-example/internal/logger"
@@ -68,9 +69,48 @@ func (c *Controller) postLogin(w http.ResponseWriter, r *http.Request) {
 		WriteError(ctx, w, http.StatusUnauthorized, "Authorization failed")
 		return
 	}
-}
-func (c *Controller) postVerify(w http.ResponseWriter, r *http.Request) {
 
+	token, err := tokenBySecret([]byte("myAwesomeSecret"))(APIClaims{
+		Profile: Profile{
+			Username: username,
+		},
+		Expiration: time.Now().Add(time.Hour * 2),
+	})
+	if err != nil {
+		WriteError(ctx, w, http.StatusUnauthorized, "cannot create token by secret")
+		return
+	}
+
+	WriteSuccessful(ctx, w, VerifyRequest{Token: token})
+}
+
+type VerifyRequest struct {
+	Token string `json:"token"`
+}
+
+func (c *Controller) postVerify(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	verifyRequest := VerifyRequest{}
+	err := json.NewDecoder(r.Body).Decode(&verifyRequest)
+	if err != nil {
+		WriteError(ctx, w, http.StatusBadRequest, "Wrong request format")
+		return
+	}
+
+	apiClaims := APIClaims{}
+	t, err := parseWithSecret("myAwesomeSecret")(verifyRequest.Token, &apiClaims)
+	if err != nil {
+		WriteError(ctx, w, http.StatusForbidden, "cannot parse token")
+		return
+	}
+
+	if !t.Valid {
+		WriteError(ctx, w, http.StatusForbidden, "invalid token")
+		return
+	}
+
+	WriteSuccessful(ctx, w, apiClaims.Profile)
 }
 
 type Controller struct {
