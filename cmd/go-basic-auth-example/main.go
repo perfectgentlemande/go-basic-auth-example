@@ -45,12 +45,12 @@ func WriteSuccessful(ctx context.Context, w http.ResponseWriter, payload interfa
 func (c *Controller) authorize(username, password string) error {
 	pass, ok := c.storedUsernamesWithPasswords[username]
 	if !ok {
-		return fmt.Errorf("No user with username: %s", username)
+		return fmt.Errorf("no user with username: %s", username)
 	}
 
 	pwd := base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(password), []byte(c.salt), 4096, 32, sha1.New))
 	if pass != pwd {
-		return fmt.Errorf("Wrong password for username: %s", username)
+		return fmt.Errorf("wrong password for username: %s", username)
 	}
 
 	return nil
@@ -70,7 +70,7 @@ func (c *Controller) postLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := tokenBySecret([]byte("myAwesomeSecret"))(APIClaims{
+	token, err := tokenBySecret(c.secret)(APIClaims{
 		Profile: Profile{
 			Username: username,
 		},
@@ -94,12 +94,12 @@ func (c *Controller) postVerify(w http.ResponseWriter, r *http.Request) {
 	verifyRequest := VerifyRequest{}
 	err := json.NewDecoder(r.Body).Decode(&verifyRequest)
 	if err != nil {
-		WriteError(ctx, w, http.StatusBadRequest, "Wrong request format")
+		WriteError(ctx, w, http.StatusBadRequest, "wrong request format")
 		return
 	}
 
 	apiClaims := APIClaims{}
-	t, err := parseWithSecret("myAwesomeSecret")(verifyRequest.Token, &apiClaims)
+	t, err := parseWithSecret(c.secret)(verifyRequest.Token, &apiClaims)
 	if err != nil {
 		WriteError(ctx, w, http.StatusForbidden, "cannot parse token")
 		return
@@ -116,6 +116,7 @@ func (c *Controller) postVerify(w http.ResponseWriter, r *http.Request) {
 type Controller struct {
 	storedUsernamesWithPasswords map[string]string
 	salt                         string
+	secret                       string
 }
 
 func main() {
@@ -127,6 +128,7 @@ func main() {
 	c := Controller{
 		storedUsernamesWithPasswords: cfg.MockedUsers,
 		salt:                         cfg.Salt,
+		secret:                       cfg.Secret,
 	}
 
 	r := chi.NewRouter()

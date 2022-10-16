@@ -25,11 +25,11 @@ func (p APIClaims) Valid() error {
 	return nil
 }
 
-func tokenBySecret(secret []byte) func(jwt.Claims) (string, error) {
+func tokenBySecret(secret string) func(jwt.Claims) (string, error) {
 	return func(c jwt.Claims) (string, error) {
 		t := jwt.New(jwt.SigningMethodHS512)
 		t.Claims = c
-		return t.SignedString(secret)
+		return t.SignedString([]byte(secret))
 	}
 }
 
