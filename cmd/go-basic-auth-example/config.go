@@ -10,7 +10,7 @@ import (
 type Config struct {
 	Addr        string            `yaml:"addr"`
 	Salt        string            `yaml:"salt"`
-	Secret      string            `yaml:"secret`
+	Secret      string            `yaml:"secret"`
 	MockedUsers map[string]string `yaml:"mocked_users"`
 }
 
