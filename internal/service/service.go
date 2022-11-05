@@ -9,17 +9,23 @@ import (
 	"github.com/xdg-go/pbkdf2"
 )
 
+type Config struct {
+	Salt        string            `yaml:"salt"`
+	Secret      string            `yaml:"secret"`
+	MockedUsers map[string]string `yaml:"mocked_users"`
+}
+
 type Service struct {
 	salt                         string
 	secret                       string
 	storedUsernamesWithPasswords map[string]string
 }
 
-func NewService(salt, secret string, usernamesWithPasswords map[string]string) *Service {
+func NewService(conf *Config) *Service {
 	return &Service{
-		salt:                         salt,
-		secret:                       secret,
-		storedUsernamesWithPasswords: usernamesWithPasswords,
+		salt:                         conf.Salt,
+		secret:                       conf.Secret,
+		storedUsernamesWithPasswords: conf.MockedUsers,
 	}
 }
 

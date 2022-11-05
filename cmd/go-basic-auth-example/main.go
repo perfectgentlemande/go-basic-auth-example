@@ -89,7 +89,7 @@ func main() {
 		log.Fatal("Cannot read config: ", err)
 	}
 
-	srvc := service.NewService(cfg.Salt, cfg.Secret, cfg.MockedUsers)
+	srvc := service.NewService(cfg.Service)
 	c := Controller{
 		srvc: srvc,
 	}

@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/perfectgentlemande/go-basic-auth-example/internal/service"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Addr        string            `yaml:"addr"`
-	Salt        string            `yaml:"salt"`
-	Secret      string            `yaml:"secret"`
-	MockedUsers map[string]string `yaml:"mocked_users"`
+	Addr    string          `yaml:"addr"`
+	Service *service.Config `yaml:"service"`
 }
 
 func readConfig(fileName string) (*Config, error) {
