@@ -10,12 +10,14 @@ import (
 )
 
 type Service struct {
+	salt                         string
 	secret                       string
 	storedUsernamesWithPasswords map[string]string
 }
 
-func NewService(secret string, usernamesWithPasswords map[string]string) *Service {
+func NewService(salt, secret string, usernamesWithPasswords map[string]string) *Service {
 	return &Service{
+		salt:                         salt,
 		secret:                       secret,
 		storedUsernamesWithPasswords: usernamesWithPasswords,
 	}
@@ -27,7 +29,7 @@ func (s *Service) checkCredentials(username, password string) error {
 		return fmt.Errorf("no user with username: %s", username)
 	}
 
-	pwd := base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(password), []byte(c.salt), 4096, 32, sha1.New))
+	pwd := base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(password), []byte(s.salt), 4096, 32, sha1.New))
 	if pass != pwd {
 		return fmt.Errorf("wrong password for username: %s", username)
 	}
@@ -35,7 +37,7 @@ func (s *Service) checkCredentials(username, password string) error {
 	return nil
 }
 
-func (s *Service) authorize(username, password string) (string, error) {
+func (s *Service) Authorize(username, password string) (string, error) {
 	if err := s.checkCredentials(username, password); err != nil {
 		return "", fmt.Errorf("invalid credentials: %w", err)
 	}
@@ -53,7 +55,7 @@ func (s *Service) authorize(username, password string) (string, error) {
 	return token, nil
 }
 
-func (s *Service) verify(token string) (Profile, error) {
+func (s *Service) Verify(token string) (Profile, error) {
 	serviceClaims := ServiceClaims{}
 	t, err := parseWithSecret(s.secret)(token, &serviceClaims)
 	if err != nil {

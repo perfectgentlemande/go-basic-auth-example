@@ -2,17 +2,13 @@ package main
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/perfectgentlemande/go-basic-auth-example/internal/logger"
-	"golang.org/x/crypto/pbkdf2"
+	"github.com/perfectgentlemande/go-basic-auth-example/internal/service"
 )
 
 type APIError struct {
@@ -42,20 +38,6 @@ func WriteSuccessful(ctx context.Context, w http.ResponseWriter, payload interfa
 	}
 }
 
-func (c *Controller) authorize(username, password string) error {
-	pass, ok := c.storedUsernamesWithPasswords[username]
-	if !ok {
-		return fmt.Errorf("no user with username: %s", username)
-	}
-
-	pwd := base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(password), []byte(c.salt), 4096, 32, sha1.New))
-	if pass != pwd {
-		return fmt.Errorf("wrong password for username: %s", username)
-	}
-
-	return nil
-}
-
 func (c *Controller) postLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -65,19 +47,9 @@ func (c *Controller) postLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := c.authorize(username, password); err != nil {
-		WriteError(ctx, w, http.StatusUnauthorized, "Authorization failed")
-		return
-	}
-
-	token, err := tokenBySecret(c.secret)(APIClaims{
-		Profile: Profile{
-			Username: username,
-		},
-		Expiration: time.Now().Add(time.Hour * 2),
-	})
+	token, err := c.srvc.Authorize(username, password)
 	if err != nil {
-		WriteError(ctx, w, http.StatusUnauthorized, "cannot create token by secret")
+		WriteError(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 		return
 	}
 
@@ -98,25 +70,17 @@ func (c *Controller) postVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiClaims := APIClaims{}
-	t, err := parseWithSecret(c.secret)(verifyRequest.Token, &apiClaims)
+	prof, err := c.srvc.Verify(verifyRequest.Token)
 	if err != nil {
-		WriteError(ctx, w, http.StatusForbidden, "cannot parse token")
+		WriteError(ctx, w, http.StatusForbidden, http.StatusText(http.StatusForbidden))
 		return
 	}
 
-	if !t.Valid {
-		WriteError(ctx, w, http.StatusForbidden, "invalid token")
-		return
-	}
-
-	WriteSuccessful(ctx, w, apiClaims.Profile)
+	WriteSuccessful(ctx, w, prof)
 }
 
 type Controller struct {
-	storedUsernamesWithPasswords map[string]string
-	salt                         string
-	secret                       string
+	srvc *service.Service
 }
 
 func main() {
@@ -125,10 +89,9 @@ func main() {
 		log.Fatal("Cannot read config: ", err)
 	}
 
+	srvc := service.NewService(cfg.Salt, cfg.Secret, cfg.MockedUsers)
 	c := Controller{
-		storedUsernamesWithPasswords: cfg.MockedUsers,
-		salt:                         cfg.Salt,
-		secret:                       cfg.Secret,
+		srvc: srvc,
 	}
 
 	r := chi.NewRouter()
