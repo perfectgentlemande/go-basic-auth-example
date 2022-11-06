@@ -3,11 +3,16 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"os/signal"
+	"syscall"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/perfectgentlemande/go-basic-auth-example/internal/logger"
 	"github.com/perfectgentlemande/go-basic-auth-example/internal/service"
+	"golang.org/x/sync/errgroup"
 )
 
 type APIError struct {
@@ -84,10 +89,16 @@ type Controller struct {
 
 func main() {
 	log := logger.DefaultLogger()
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	defer cancel()
 
 	cfg, err := readConfig("config.yaml")
 	if err != nil {
-		log.Fatal("Cannot read config: ", err)
+		log.WithError(err).Fatal("cannot read config")
 	}
 
 	srvc := service.NewService(cfg.Service)
@@ -100,5 +111,35 @@ func main() {
 	r.Post("/login", c.postLogin)
 	r.Post("/verify", c.postVerify)
 
-	http.ListenAndServe(cfg.Addr, r)
+	srv := &http.Server{
+		Addr:    cfg.Addr,
+		Handler: r,
+	}
+	rungroup, ctx := errgroup.WithContext(ctx)
+
+	log.WithField("address", srv.Addr).Info("starting server")
+	rungroup.Go(func() error {
+		if er := srv.ListenAndServe(); er != nil && !errors.Is(er, http.ErrServerClosed) {
+			return fmt.Errorf("listen and server %w", er)
+		}
+
+		return nil
+	})
+	rungroup.Go(func() error {
+		<-ctx.Done()
+
+		if er := srv.Shutdown(context.Background()); er != nil {
+			return fmt.Errorf("shutdown http server %w", er)
+		}
+
+		return nil
+	})
+
+	err = rungroup.Wait()
+	if err != nil {
+		log.WithError(err).Error("run group exited because of error")
+		return
+	}
+
+	log.Info("server exited properly")
 }
