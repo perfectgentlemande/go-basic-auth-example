@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -84,6 +83,8 @@ type Controller struct {
 }
 
 func main() {
+	log := logger.DefaultLogger()
+
 	cfg, err := readConfig("config.yaml")
 	if err != nil {
 		log.Fatal("Cannot read config: ", err)
@@ -95,6 +96,7 @@ func main() {
 	}
 
 	r := chi.NewRouter()
+	r.Use(logger.NewLoggingMiddleware(log))
 	r.Post("/login", c.postLogin)
 	r.Post("/verify", c.postVerify)
 
